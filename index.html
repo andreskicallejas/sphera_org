@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sphera — Visualización Financiera 3D</title>
+  <link rel="stylesheet" href="src/styles/main.css" />
+</head>
+<body>
+
+  <!-- ─────────────────────────────────────────────────────────────────
+       LAYOUT PRINCIPAL
+       ┌─────────────────────────┬────────────────┐
+       │  #canvas-wrapper (65%)  │  #panel-right  │
+       │  Three.js               │  Detalle nodo  │
+       ├─────────────────────────┤                │
+       │  #flowchart-panel       │                │
+       └─────────────────────────┴────────────────┘
+  ──────────────────────────────────────────────────────────────────── -->
+  <!-- Barra de búsqueda superior fija -->
+  <div id="search-bar">
+    <input type="text" id="search-input" placeholder="Buscar nodo, artículo, proceso…" autocomplete="off" spellcheck="false" />
+    <button id="search-btn" title="Buscar">&#x1F50D;</button>
+    <button id="search-clear" class="hidden" title="Limpiar búsqueda">&#x2715;</button>
+    <span id="search-msg" class="hidden"></span>
+  </div>
+
+  <div id="app">
+
+    <!-- Zona central: lienzo 3D + diagrama inferior -->
+    <div id="main-area">
+      <div id="canvas-wrapper">
+        <!-- Three.js inyecta el <canvas> aquí -->
+        <div id="loading-overlay">
+          <div class="spinner"></div>
+          <p>Cargando esfera de conocimiento…</p>
+        </div>
+        <!-- Leyenda de tipos de nodo -->
+        <div id="legend">
+          <h4>Leyenda</h4>
+          <div class="legend-item" data-type="empresa"><span class="dot" style="background:#FFD700"></span>Empresa</div>
+          <div class="legend-item" data-type="subdominio"><span class="dot" style="background:#FF8C00"></span>Subdominio</div>
+          <div class="legend-item" data-type="producto"><span class="dot" style="background:#2980B9"></span>Producto</div>
+          <div class="legend-item" data-type="macroproceso"><span class="dot" style="background:#9B59B6"></span>Macroproceso</div>
+          <div class="legend-item" data-type="proceso"><span class="dot" style="background:#1ABC9C"></span>Proceso</div>
+          <div class="legend-item" data-type="actividad"><span class="dot" style="background:#27AE60"></span>Actividad</div>
+          <div class="legend-item" data-type="tarea"><span class="dot" style="background:#F39C12"></span>Tarea</div>
+          <div class="legend-item" data-type="articulo"><span class="dot" style="background:#E74C3C"></span>Artículo</div>
+        </div>
+        <!-- Tooltip flotante al hacer hover -->
+        <div id="tooltip"></div>
+      </div>
+
+      <!-- Diagrama de flujo jerárquico (panel inferior) -->
+      <div id="flowchart-panel" class="hidden">
+        <div id="flowchart-header">
+          <span id="flowchart-title">Cadena jerárquica</span>
+          <button id="flowchart-close" title="Cerrar">✕</button>
+        </div>
+        <div id="flowchart-content">
+          <svg id="flowchart-svg"></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel derecho: detalle del nodo seleccionado -->
+    <aside id="panel-right">
+      <div id="panel-empty">
+        <div class="empty-icon">◎</div>
+        <p>Selecciona una partícula<br>para ver su detalle</p>
+      </div>
+      <div id="panel-detail" class="hidden">
+        <div id="detail-header">
+          <span id="detail-type-badge"></span>
+          <h2 id="detail-title"></h2>
+          <p id="detail-id"></p>
+        </div>
+        <div class="detail-section">
+          <h3>Descripción</h3>
+          <p id="detail-description"></p>
+        </div>
+        <div class="detail-section">
+          <h3>Objetivo</h3>
+          <p id="detail-objetivo"></p>
+        </div>
+        <div class="detail-section">
+          <h3>Contenido</h3>
+          <p id="detail-contenido"></p>
+        </div>
+        <!-- Sección visible sólo para artículos de conocimiento -->
+        <div class="detail-section hidden" id="section-articulo">
+          <h3>Tipo de artículo</h3>
+          <p id="detail-tipo-articulo"></p>
+          <h3>Relación directa con</h3>
+          <p id="detail-relacion-directa"></p>
+          <h3>Segmentos</h3>
+          <p id="detail-segmentos"></p>
+          <h3>Familias de segmentos</h3>
+          <p id="detail-familias"></p>
+        </div>
+        <div class="detail-section">
+          <h3>Ruta jerárquica</h3>
+          <p id="detail-ruta"></p>
+        </div>
+      </div>
+    </aside>
+
+  </div><!-- /#app -->
+
+  <!-- Capa de datos HTML: un <span> oculto por partícula con data-attributes (Fix 6) -->
+  <div id="particle-data-layer" aria-hidden="true" hidden></div>
+
+  <!-- ──────────────────────────────────────────────────────────
+       Scripts: orden importante (sin ES modules para compatibilidad
+       con file:// y servidores sin configuración especial)
+  ─────────────────────────────────────────────────────────────── -->
+
+  <!-- Three.js r128 – versión UMD que expone window.THREE -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- OrbitControls para r128 -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <!-- Datos (se cargan antes que la lógica) -->
+  <script src="src/data/nodes.js"></script>
+  <script src="src/data/relations.js"></script>
+
+  <!-- Utilidades -->
+  <script src="src/utils/helpers.js"></script>
+
+  <!-- Módulos de lógica -->
+  <script src="src/js/scene.js"></script>
+  <script src="src/js/particles.js"></script>
+  <script src="src/js/interactions.js"></script>
+  <script src="src/js/ui.js"></script>
+  <script src="src/js/flowchart.js"></script>
+
+  <!-- Punto de entrada principal -->
+  <script src="src/js/main.js"></script>
+
+</body>
+</html>

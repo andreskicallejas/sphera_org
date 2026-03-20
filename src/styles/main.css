@@ -1,0 +1,480 @@
+/* ================================================================
+   main.css  –  Esfera de partículas 3D / Sector Financiero
+   Diseño: oscuro, moderno, glassmorphism ligero
+   ================================================================ */
+
+/* ── Reset y variables ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Paleta */
+  --bg-deep:       #050810;
+  --bg-surface:    #0c1124;
+  --bg-glass:      rgba(12, 17, 36, 0.75);
+  --bg-glass-alt:  rgba(20, 28, 55, 0.85);
+  --border-dim:    rgba(80, 110, 200, 0.18);
+  --border-bright: rgba(80, 160, 255, 0.35);
+  --text-primary:  #e8eaf6;
+  --text-secondary:#8892b0;
+  --text-muted:    #4a5580;
+  --accent:        #4fc3f7;
+  --accent-glow:   rgba(79, 195, 247, 0.25);
+
+  /* Dimensiones del layout */
+  --panel-width:   340px;
+  --flowchart-h:   210px;
+
+  /* Colores de tipos de nodo (usados también en JS) */
+  --color-empresa:     #FFD700;
+  --color-subdominio:  #FF8C00;
+  --color-producto:    #2980B9;
+  --color-macroproceso:#9B59B6;
+  --color-proceso:     #1ABC9C;
+  --color-actividad:   #27AE60;
+  --color-tarea:       #F39C12;
+  --color-articulo:    #E74C3C;
+}
+
+/* ── Tipografía base ───────────────────────────────────────────── */
+html, body {
+  height: 100%;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow: hidden;
+}
+
+/* ── Barra de búsqueda superior ────────────────────────────────── */
+#search-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 20px;
+  background: rgba(5, 8, 20, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(79, 195, 247, 0.12);
+}
+
+#search-input {
+  width: 100%;
+  max-width: 440px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(79, 195, 247, 0.22);
+  border-radius: 20px;
+  padding: 6px 16px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+#search-input:focus {
+  border-color: rgba(79, 195, 247, 0.55);
+  background: rgba(255, 255, 255, 0.10);
+}
+
+#search-input::placeholder {
+  color: var(--text-muted);
+}
+
+#search-btn,
+#search-clear {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(79, 195, 247, 0.28);
+  background: rgba(79, 195, 247, 0.10);
+  color: var(--accent);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+#search-btn:hover,
+#search-clear:hover {
+  background: rgba(79, 195, 247, 0.25);
+}
+
+#search-msg {
+  font-size: 12px;
+  color: rgba(231, 76, 60, 0.85);
+  white-space: nowrap;
+  padding-left: 4px;
+  animation: fadeInMsg 0.2s ease;
+}
+
+@keyframes fadeInMsg {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Layout principal ──────────────────────────────────────────── */
+#app {
+  display: flex;
+  width: 100vw;
+  height: calc(100vh - 46px);
+  margin-top: 46px;
+  overflow: hidden;
+}
+
+#main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Lienzo Three.js ───────────────────────────────────────────── */
+#canvas-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse at center,
+    #0d1533 0%,
+    var(--bg-deep) 70%
+  );
+}
+
+#canvas-wrapper canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ── Loading overlay ───────────────────────────────────────────── */
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-deep);
+  z-index: 100;
+  gap: 16px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  transition: opacity 0.5s;
+}
+
+#loading-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--border-dim);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Leyenda ───────────────────────────────────────────────────── */
+#legend {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 12px 16px;
+  z-index: 10;
+  min-width: 140px;
+}
+
+#legend h4 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.legend-item:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text-primary);
+}
+
+.legend-item.legend-active {
+  background: rgba(255,255,255,0.12);
+  color: #e8eaf6;
+  font-weight: 600;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 5px currentColor;
+}
+
+/* ── Tooltip flotante ──────────────────────────────────────────── */
+#tooltip {
+  position: absolute;
+  background: var(--bg-glass-alt);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-primary);
+  pointer-events: none;
+  z-index: 50;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, -130%);
+  transition: opacity 0.15s;
+}
+
+#tooltip.visible {
+  opacity: 1;
+}
+
+/* ── Panel inferior: flowchart ─────────────────────────────────── */
+#flowchart-panel {
+  height: var(--flowchart-h);
+  background: var(--bg-glass-alt);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-dim);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#flowchart-panel.hidden {
+  height: 0;
+}
+
+#flowchart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-dim);
+  flex-shrink: 0;
+}
+
+#flowchart-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+#flowchart-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+#flowchart-close:hover {
+  color: var(--text-primary);
+  background: var(--border-dim);
+}
+
+#flowchart-content {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+}
+
+#flowchart-svg {
+  display: block;
+  min-width: 300px;
+}
+
+/* ── Panel derecho: detalle ────────────────────────────────────── */
+#panel-right {
+  width: var(--panel-width);
+  flex-shrink: 0;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-dim);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-dim) transparent;
+}
+
+#panel-right::-webkit-scrollbar { width: 4px; }
+#panel-right::-webkit-scrollbar-thumb {
+  background: var(--border-dim);
+  border-radius: 2px;
+}
+
+/* Estado vacío */
+#panel-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 32px;
+}
+
+.empty-icon {
+  font-size: 42px;
+  opacity: 0.35;
+  animation: pulse-icon 3s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50%       { opacity: 0.55; transform: scale(1.08); }
+}
+
+/* Detalle activo */
+#panel-detail {
+  padding: 0 0 24px 0;
+}
+
+#detail-header {
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid var(--border-dim);
+  position: sticky;
+  top: 0;
+  background: var(--bg-surface);
+  z-index: 5;
+}
+
+#detail-type-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  background: var(--badge-bg, rgba(79,195,247,0.15));
+  color: var(--badge-color, var(--accent));
+  border: 1px solid var(--badge-border, rgba(79,195,247,0.3));
+}
+
+#detail-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 4px;
+}
+
+#detail-id {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.detail-section {
+  padding: 14px 20px 0;
+}
+
+.detail-section h3 {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+
+.detail-section p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Ruta jerárquica (breadcrumb) */
+#detail-ruta {
+  font-size: 12px;
+  color: var(--accent);
+  font-family: monospace;
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+/* ── Utilidades ────────────────────────────────────────────────── */
+.hidden {
+  display: none !important;
+}
+
+/* ── Resaltado de partícula seleccionada (glow via CSS) ─────────── */
+/* El glow se aplica programáticamente en Three.js;
+   aquí definimos el cursor sobre el canvas */
+#canvas-wrapper:active {
+  cursor: grabbing;
+}
+
+#canvas-wrapper {
+  cursor: grab;
+}
+
+/* ── Animación de entrada del panel ────────────────────────────── */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+#panel-detail:not(.hidden) {
+  animation: slide-in-right 0.25s ease;
+}
+
+/* ── Scrollbar global ───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 3px; }
